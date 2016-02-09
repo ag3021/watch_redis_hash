@@ -5,12 +5,13 @@ require 'yajl/json_gem'
 class WatchRedisHash
   NUM_REG = /^[-+]?([0-9]+\.[0-9]+|[0-9]+)$/
 
-  def initialize(client: nil, key: nil, subkey: nil, each: nil, symbolize: true)
+  def initialize(client: nil, key: nil, subkey: nil, each: nil, publish: nil, symbolize: true)
     fail 'No Client provided to WatchRedisHash' unless client
     @client = client
     @key = key
     @subkey = subkey
     @symbolize = !!symbolize
+    @publish = !!publish
     _bind_each if each
     _bind unless each
   end
@@ -42,13 +43,17 @@ class WatchRedisHash
   def _bind_each
     @each = true
     (@obj = WatchHash.new).setbind do |(subkey, val)|
-      @client.hset(@key, subkey, val.to_json)
+      @client.hset(@key, subkey, val = val.to_json) do |ok|
+        @client.publish("#{@key}:#{subkey}", val) if ok && @publish
+      end
     end
   end
 
   def _bind
     (@obj = WatchHash.new).setbind(true) do |same_obj|
-      @client.hset(@key, @subkey, same_obj.to_json)
+      @client.hset(@key, @subkey, same_obj = same_obj.to_json) do |ok|
+        @client.publish("#{@key}:#{subkey}", same_obj) if ok && @publish
+      end
     end
   end
 

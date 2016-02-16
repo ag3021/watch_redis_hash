@@ -17,10 +17,12 @@ class WatchRedisHash
   end
 
   def []=(key, val)
+    key.map! { |k| k.is_a?(Symbol) ? k.to_s : k } if key.is_a?(Array)
     @obj[key] = val
   end
 
   def [](key)
+    key.map! { |k| k.is_a?(Symbol) ? k.to_s : k } if key.is_a?(Array)
     @obj[key]
   end
 
@@ -52,7 +54,7 @@ class WatchRedisHash
   def _bind
     (@obj = WatchHash.new).setbind(true) do |same_obj|
       @client.hset(@key, @subkey, same_obj = same_obj.to_json) do |ok|
-        @client.publish("#{@key}:#{subkey}", same_obj) if ok && @publish
+        @client.publish("#{@key}:#{@subkey}", same_obj) if ok && @publish
       end
     end
   end

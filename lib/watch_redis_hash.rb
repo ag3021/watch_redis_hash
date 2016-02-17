@@ -5,7 +5,7 @@ require 'yajl/json_gem'
 class WatchRedisHash
   NUM_REG = /^[-+]?([0-9]+\.[0-9]+|[0-9]+)$/
 
-  def initialize(client: nil, key: nil, subkey: nil, each: nil, publish: nil, symbolize: true, default: nil)
+  def initialize(client: nil, key: nil, subkey: nil, each: nil, publish: nil, tag: nil, symbolize: true, default: nil)
     fail 'No Client provided to WatchRedisHash' unless client
     @client = client
     @key = key
@@ -13,6 +13,7 @@ class WatchRedisHash
     @subkey = subkey
     @symbolize = !!symbolize
     @publish = !!publish
+    @tag = tag
     _bind_each if each
     _bind unless each
   end
@@ -49,13 +50,22 @@ class WatchRedisHash
   def _bind_each
     @each = true
     (@obj = WatchHash.new(@default)).setbind do |(subkey, val)|
-      @client.hset(@key, subkey, val = val.to_json) do |ok|
-        @client.publish("#{@key}:#{subkey}", val) if ok && @publish
+      @client.hset(@key, subkey, jval = val.to_json) do |ok|
+        if ok && @publish
+          key = "#{@key}:#{val[@tag]}:#{subkey}" if @tag && val[@tag]
+          key = "#{@key}:#{subkey}" unless key
+          @client.publish(key, jval)
+        end
       end
     end
   end
 
   def _bind
+    if @tag
+      @channel = "#{@key}:#{@tag}:#{@subkey}"
+    else
+      @channel = "#{@key}:#{@subkey}"
+    end
     (@obj = WatchHash.new(@default)).setbind(true) do |same_obj|
       @client.hset(@key, @subkey, same_obj = same_obj.to_json) do |ok|
         @client.publish("#{@key}:#{@subkey}", same_obj) if ok && @publish

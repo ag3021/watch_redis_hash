@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{Watches Ruby Hash and dumps to redis hash on set}
   spec.description   = %q{Watches Ruby Hash and dumps to redis hash on set}
-  spec.homepage      = "github.com/ag3021/watch_redis_hash"
+  spec.homepage      = "http://github.com/ag3021/watch_redis_hash"
   spec.license       = "MIT"
 
 
